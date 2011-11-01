@@ -43,10 +43,10 @@
 			public static const AUDIO:String = "AUDIO";
 			
 			[Bindable]
-			private var videoURL:String = "RTMP PATH"; /* private var videoURL:String = "rtmp://podium-fms01.wopr.connectsolutions.com/connectsolutions/dev"; */
+			private var videoURL:String = "RTMP PATH";
 			
 			[Bindable]
-			private var streamName:String = "STEAM NAME"; /* private var streamName:String = "4093a061-1b61-4422-aeb7-d533679bb1c5_2VBW54_BBAP2A_%i"; */
+			private var streamName:String = "STEAM NAME";
 			
 			[Bindable]
 			private var buffer:Number = 2;
