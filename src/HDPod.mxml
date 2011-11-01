@@ -1,0 +1,563 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+				paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" resize="application1_resizeHandler(event)"
+				creationComplete="application1_creationCompleteHandler(event)" xmlns:components="com.adobe.sync.components.*">
+	<mx:Script>
+		<![CDATA[
+			/**
+			 * 
+			 * Copyright 2011 ConnectSolutions
+			 *
+			 * Licensed under the Apache License, Version 2.0 (the "License");
+			 * you may not use this file except in compliance with the License.
+			 * You may obtain a copy of the License at
+			 * 
+			 *   http://www.apache.org/licenses/LICENSE-2.0
+			 * 
+			 * Unless required by applicable law or agreed to in writing, software
+			 * distributed under the License is distributed on an "AS IS" BASIS,
+			 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+			 * See the License for the specific language governing permissions and
+			 * limitations under the License.
+			 *  
+			 */ 
+
+			import com.adobe.sync.components.SyncConnector;
+			import com.adobe.sync.events.SyncSwfEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ResizeEvent;
+			import mx.formatters.SwitchSymbolFormatter;
+			
+			public static const CONNECT:String = "Connect";
+			public static const DISCONNECT:String = "Disconnect";
+			public static const SEND_RTMP:String = "sendRTMP";
+			public static const SEND_RTMP_ARRAY:String = "sendRTMPArray";
+			public static const STOP_RTMP:String = "stopRTMP";
+			public static const HIGH:String = "HIGH";
+			public static const MEDIUM:String = "MEDIUM";
+			public static const LOW:String = "LOW";
+			public static const AUDIO:String = "AUDIO";
+			
+			[Bindable]
+			private var videoURL:String = "RTMP PATH"; /* private var videoURL:String = "rtmp://podium-fms01.wopr.connectsolutions.com/connectsolutions/dev"; */
+			
+			[Bindable]
+			private var streamName:String = "STEAM NAME"; /* private var streamName:String = "4093a061-1b61-4422-aeb7-d533679bb1c5_2VBW54_BBAP2A_%i"; */
+			
+			[Bindable]
+			private var buffer:Number = 2;
+			[Bindable]
+			private var aboutStr:String = "The Podium Pod for Connect Pro enables meeting hosts to broadcast High Definition video. "
+				+"Developed by ConnectSolutions, the Pod leverages the HD webcasting technology behind ConnectSolutions Podium, "
+				+"the leading Flash-based platform for delivering interactive HD Video experiences to audiences of 100,000 or more."
+				+"\n\nTo learn more about the Podium Pod for Connect Pro visit "
+				+"<a href='http://www.connectsolutions.com/go/podiumpod' target='_podiumpod'>http://www.connectsolutions.com/go/podiumpod</a>.\n\nver 2.0";
+			[Bindable]
+			protected var copyrightFooterText:String = 'Copyright © 2011 ConnectSolutions LLC. All rights reserved.\nUse of ConnectSolutions Podium Pod for Connect Pro signifies your agreement to the <a href="http://www.connectsolutions.com/legal/terms/">Services Agreement</a> and <a href="http://www.connectsolutions.com/legal/privacy/">Online Privacy Policy</a>.';
+			[Bindable]
+			private var audioOnly:Boolean = false;
+			[Bindable]
+			private var connection:NetConnection;
+			[Bindable]
+			private var stream:NetStream;
+			[Bindable]
+			private var quality:String;
+			[Bindable]
+			private var streamColl:ArrayCollection = new ArrayCollection();
+			private var video:Video = new Video();
+			
+			[Embed(source="/assets/images/titleClear.png")]
+			public static var titleClear:Class;
+			
+			[Embed(source="/assets/images/cs-logo-lg.png")]
+			public static var csLogo:Class;
+			
+			[Embed(source="/assets/images/Podium_watermark.png")]
+			public static var watermark:Class;
+			
+			[Embed(source="/assets/images/audioOnly.png")]
+			public static var audioOnlyTitle:Class;
+			
+			[Embed(source="/assets/images/about.png")]
+			public static var aboutIcon:Class;
+			
+			[Embed(source="/assets/images/audio.png")]
+			public static var audioIcon:Class;
+			
+			[Embed(source="/assets/images/video.png")]
+			public static var settingsIcon:Class;
+			
+			[Embed(source="/assets/images/video_icon.png")]
+			public static var qualityIcon:Class;
+			
+			[Embed(source="/assets/images/mute.png")]
+			public static var muteIcon:Class;
+			
+			protected function connectButton_clickHandler(event:MouseEvent):void
+			{
+				if (connectButton.label == CONNECT) {
+					standByBox.visible = false;
+					vstack.selectedIndex = 0;
+					buffer = bufferStepper.value;
+					videoURL = rtmpServerInput.text;
+					
+					if (rtmpStreamInput.text.indexOf("%i") > 0) {
+						// DO MULTI BITRATE
+						trace("Multi bitrate stream.");
+						for (var i:int=0; i < 3; i++) {
+							var multiStream:String = rtmpStreamInput.text.substr(0, rtmpStreamInput.text.lastIndexOf("%i"))  + (i + 1);
+							trace("MULTI BITRATE STREAM: " + multiStream);
+							streamColl.addItem(multiStream);
+						}
+						streamName = streamColl.getItemAt(1).toString();
+						quality = MEDIUM;
+						var obj:Object = new Object();
+						obj.address = videoURL; 
+						obj.streamArray = streamColl.source;
+						obj.buffer = buffer;
+						syncConnector.dispatchSyncMessage(SEND_RTMP_ARRAY, obj, false);
+					}
+					else {
+						streamName = rtmpStreamInput.text;
+						
+						var obj:Object = new Object();
+						obj.address = videoURL; 
+						obj.stream = streamName;
+						obj.buffer = buffer;
+						syncConnector.dispatchSyncMessage(SEND_RTMP, obj, false);
+					}
+					
+					connection = new NetConnection();
+					connection.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+					connection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+					connection.connect(videoURL); 
+				}
+				else if (connectButton.label == DISCONNECT) {
+					try {
+						if (stream != null) {
+							stream.close();
+						}
+						if (connection != null) {
+							connection.close();
+						}
+					} catch (error:Error) {
+						trace(error);
+					}
+					videoCanvas.removeChild(video);
+					standByBox.visible = true;
+					
+					// RESET THE MUTE BUTTON
+					muteButton.enabled = false;
+					qualityButton.enabled = false;
+					watermarkBox.visible = false;
+					isMuted = false;
+					if (stream != null) {
+						stream.receiveAudio(true);
+					}
+					muteButton.label = "Mute";
+					
+					connectButton.label = CONNECT;
+					syncConnector.dispatchSyncMessage(STOP_RTMP, obj, false);
+				}
+			}
+			
+			private function netStatusHandler(event:NetStatusEvent):void {
+				switch (event.info.code) {
+					case "NetConnection.Connect.Success":
+						if (videoCanvas.getChildByName(video.name) != null) {
+							videoCanvas.removeChild(video);
+						}
+						connectStream();
+						break;
+					case "NetStream.Play.StreamNotFound":
+						trace("Stream not found: " + videoURL);
+						standByBox.visible = true;
+						break;
+				}
+			} 
+			
+			private function securityErrorHandler(event:SecurityErrorEvent):void {
+				trace("securityErrorHandler: " + event);
+				standByBox.visible = true;
+			}
+			
+			private function connectStream():void {
+				stream = new NetStream(connection);
+				stream.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				stream.client = new CustomClient();
+				stream.bufferTime = buffer;
+				if (!audioOnly) { 
+					video.attachNetStream(stream);
+					video.smoothing = true;
+					video.width = Application.application.width;
+					video.height = Application.application.height;
+					video.x = 0;
+					video.y = 0;
+					
+					videoCanvas.addChild(video);
+				}
+				stream.play(streamName);
+				
+				connectButton.label = DISCONNECT;
+				
+				video.scaleX > video.scaleY ? video.scaleY = video.scaleX : video.scaleX = video.scaleY;
+				
+				// RESET THE MUTE BUTTON
+				qualityButton.enabled = true;
+				muteButton.enabled = true;
+				watermarkBox.visible = true;
+				isMuted = false;
+				if (stream != null) {
+					stream.receiveAudio(true);
+				}
+				muteButton.label = "Mute";
+				
+				alignObjects(this.width,this.height);
+				syncConnector.dispatchSyncMessage(SyncSwfEvent.SIZE_CHANGED, null, false);
+			}
+			
+			protected function playRTMP(_address:String, _stream:String, _buffer:Number):void {
+				standByBox.visible = false;
+				qualityButton.enabled = true;
+				videoURL = _address;
+				streamName = _stream;
+				buffer = _buffer;
+				
+				// RESET THE MUTE BUTTON
+				muteButton.enabled = true;
+				watermarkBox.visible = true;
+				isMuted = false;
+				if (stream != null) {
+					stream.receiveAudio(true);
+					if(audioOnly) {
+						stream.receiveVideo(false);
+					}
+				}
+				
+				muteButton.label = "Mute";
+				
+				connection = new NetConnection();
+				connection.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				connection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				connection.connect(videoURL);
+			}
+			
+			protected function application1_creationCompleteHandler(event:FlexEvent):void
+			{
+				updateRoleSettings();
+				
+				//this.addEventListener(ResizeEvent.RESIZE, appSizeChanged);
+				
+				
+				syncConnector.allowParticipantPublish(SEND_RTMP_ARRAY,true);
+				syncConnector.allowParticipantPublish(SEND_RTMP,true);
+				syncConnector.allowParticipantPublish(STOP_RTMP,true);
+				syncConnector.addEventListener("roleChanged", updateRoleSettings);
+				syncConnector.addEventListener("sizeChanged",sizeChanged);
+				syncConnector.addEventListener("caughtUp",caughtUp);
+				syncConnector.addEventListener("syncMessageReceived",syncMessageReceived);
+				
+				syncConnector.addEventListener(SyncSwfEvent.SYNC_MSG_RCVD, syncMessageReceived);
+				syncConnector.addEventListener(SEND_RTMP_ARRAY, syncMessageReceived);
+				syncConnector.addEventListener(SEND_RTMP, syncMessageReceived);
+				syncConnector.addEventListener(STOP_RTMP, syncMessageReceived);
+				syncConnector.addEventListener(SyncSwfEvent.ROLE_CHANGED, updateRoleSettings);
+				syncConnector.addEventListener(SyncSwfEvent.POD_CLOSED, podClosed);
+				syncConnector.addEventListener(SyncSwfEvent.SIZE_CHANGED, sizeChanged);
+			}
+			
+			private function syncMessageReceived(p_evt:SyncSwfEvent):void
+			{
+				if (p_evt.data.msgNm==SEND_RTMP) {
+					playRTMP(p_evt.data.msgVal.address,p_evt.data.msgVal.stream, p_evt.data.msgVal.buffer);
+				} 
+				else if (p_evt.data.msgNm==STOP_RTMP) {
+					try {
+						if (stream != null) {
+							stream.close();
+						}
+						if (connection != null) {
+							connection.close();
+						}
+					} catch (error:Error) {
+						trace(error);
+					}
+					videoCanvas.removeChild(video);
+					standByBox.visible = true;
+					connectButton.label = CONNECT;
+				}
+				else if (p_evt.data.msgNm==SEND_RTMP_ARRAY) {
+					videoURL = p_evt.data.msgVal.address;
+					buffer = p_evt.data.msgVal.buffer;
+					streamColl = new ArrayCollection(p_evt.data.msgVal.streamArray);
+					streamName = streamColl.getItemAt(1).toString();
+					playRTMP(videoURL, streamName, buffer);
+					timer.addEventListener(TimerEvent.TIMER, resizeTimerHandler);
+					timer.start();
+				}
+			} 
+			
+			protected function caughtUp(event:SyncSwfEvent=null):void {
+				updateRoleSettings();
+				sizeChanged();
+			}
+			
+			protected function appSizeChanged(event:ResizeEvent=null):void {
+				alignObjects(this.width,this.height);
+			}
+			
+			protected function sizeChanged(event:SyncSwfEvent=null):void {
+				if (syncConnector.podWidth != undefined && !isNaN(syncConnector.podWidth)) {
+					alignObjects(syncConnector.podWidth,syncConnector.podHeight);
+				} else {
+					alignObjects(this.width,this.height);
+				}
+			}
+			
+			protected function alignObjects(w:Number, h:Number):void {
+				if (isNaN(w) || isNaN(h) || controlBox == null) {
+					return;
+				}
+				video.scaleX > video.scaleY ? video.scaleY = video.scaleX : video.scaleX = video.scaleY;
+				alignVideo(w,h-controlBox.height);
+			}
+			
+			private function resizeVideo(w:Number, h:Number):void
+			{
+				trace("Width: " + w + " ? Height: " + h);
+				video.width=w;
+				video.height=h;
+				video.scaleX > video.scaleY ? video.scaleY = video.scaleX : video.scaleX = video.scaleY;
+			}
+			
+			protected function alignVideo(w:Number, h:Number):void {
+				var videoWidth:Number = video.width;
+				var videoHeight:Number = video.height;
+				//Get the width ratio
+				var widthRatio:Number = w/video.width;
+				//Get the height ratio
+				var heightRatio:Number = h/video.height;
+				
+				
+				//Resize and postition while maintaining aspect ratio of video
+				if (widthRatio>heightRatio) {
+					video.y = 0;
+					video.height = h;
+					video.width = video.width*heightRatio;
+					video.x = (w-video.width)*0.5;
+					video.scaleX > video.scaleY ? video.scaleY = video.scaleX : video.scaleX = video.scaleY;
+				} else {
+					video.x = 0;
+					video.width = w;
+					video.height = video.height*widthRatio;
+					video.y = (h-video.height)*0.5;
+					video.scaleX > video.scaleY ? video.scaleY = video.scaleX : video.scaleX = video.scaleY;
+				}
+			}
+			
+			[Bindable]
+			protected var showConnectionOptions:Boolean = true;
+			protected function updateRoleSettings(event:SyncSwfEvent=null):void {
+				if (syncConnector.role == "owner") {
+					showConnectionOptions = true;
+				} else if (syncConnector.role == "presenter") {
+					showConnectionOptions = false;
+				} else if (syncConnector.role == "viewer") {
+					showConnectionOptions = false;
+				}
+			}
+
+			[Bindable]
+			protected var isMuted:Boolean = false;
+			protected function muteButton_clickHandler(event:MouseEvent):void
+			{
+				if (stream != null) {
+					if (isMuted) {
+						stream.receiveAudio(isMuted);
+						muteButton.label = "Mute";
+					}
+					else {
+						stream.receiveAudio(isMuted);
+						muteButton.label = "Unmute";
+					}
+					isMuted = !isMuted;
+				}
+			}
+			
+			protected function podClosed(event:SyncSwfEvent=null):void {
+				try {
+					if (stream != null) {
+						stream.close();
+					}
+					if (connection != null) {
+						connection.close();
+					}
+				} catch (error:Error) {
+					trace(error);
+				}
+				videoCanvas.removeChild(video);
+			}
+
+
+			protected function optionsButton_clickHandler(event:MouseEvent):void
+			{
+				vstack.selectedIndex = 2;
+				aboutWindow.visible = false;
+				qualityWindow.visible = false;
+				optionsWindow.visible = !optionsWindow.visible;
+			}
+
+
+			protected function aboutButton_clickHandler(event:MouseEvent):void
+			{
+				vstack.selectedIndex = 1;
+				optionsWindow.visible = false;
+				qualityWindow.visible = false;
+				aboutWindow.visible = !aboutWindow.visible;
+			}
+
+
+			protected function application1_resizeHandler(event:ResizeEvent):void
+			{
+				sizeChanged();
+			}
+			
+			[Bindable]
+			private var timer:Timer = new Timer(1000, 1);
+			private function resizeTimerHandler(event:TimerEvent=null):void {
+				timer.stop();
+				alignObjects(this.width, this.height);
+			}
+
+			protected function qualityButton_clickHandler(event:MouseEvent):void
+			{
+				vstack.selectedIndex = 3;
+				aboutWindow.visible = false;
+				optionsWindow.visible = false;
+				qualityWindow.visible = !qualityWindow.visible;
+			}
+
+
+			protected function qualitytype_itemClickHandler(event:ItemClickEvent):void
+			{
+				trace(event.item);
+				switch (event.item) {
+					case LOW:
+						audioOnly = false;
+						playRTMP(videoURL, streamColl.getItemAt(0).toString(), buffer);
+						quality = LOW;
+						break;
+					case MEDIUM:
+						audioOnly = false;
+						playRTMP(videoURL, streamColl.getItemAt(1).toString(), buffer);
+						quality = MEDIUM;
+						break;
+					case HIGH:
+						audioOnly = false;
+						playRTMP(videoURL, streamColl.getItemAt(2).toString(), buffer);
+						quality = HIGH;
+						break;
+					case AUDIO:
+						audioOnly = true;
+						quality = AUDIO;
+						playRTMP(videoURL, streamColl.getItemAt(0).toString(), buffer);
+						break;
+				}
+				vstack.selectedIndex = 0;
+				timer.start();
+			}
+
+		]]>
+	</mx:Script>
+	<mx:Style source="assets/style/style.css" />
+	<mx:states>
+		<mx:State id="about" name="about" />
+		<mx:State id="producer" name="producer" />
+	</mx:states>
+	<components:SyncConnector id="syncConnector" syncMessageReceived="syncMessageReceived(event)" caughtUp="caughtUp(event)"/>
+	<mx:Canvas width="100%" height="100%" x="0" y="0" resize="sizeChanged()">
+		<mx:Box id="standByBox" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<mx:Box verticalAlign="middle" horizontalAlign="center" 
+					paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10" 
+					backgroundColor="#4e4e4e" backgroundAlpha="0.5" borderStyle="solid" borderColor="#000000" cornerRadius="0.8" filters="{[new DropShadowFilter()]}">
+				<mx:Image source="{titleClear}" />	
+			</mx:Box>
+		</mx:Box>
+		<mx:Box id="audioOnlyBox" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<mx:VBox verticalAlign="middle" horizontalAlign="center" visible="{audioOnly}"
+					paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10" 
+					backgroundColor="#4e4e4e" backgroundAlpha="0.5" borderStyle="solid" borderColor="#000000" cornerRadius="0.8" filters="{[new DropShadowFilter()]}">
+				<mx:Image source="{audioOnlyTitle}" />
+			</mx:VBox>
+		</mx:Box>
+		<mx:VBox verticalAlign="bottom" horizontalAlign="center"  width="100%" height="100%">
+			<mx:UIComponent id="videoCanvas" width="100%" height="100%" visible="{!audioOnly}" />
+			<mx:VBox horizontalAlign="right" verticalGap="0" width="100%">
+				<mx:ViewStack id="vstack" width="300" height="250">
+					<mx:Box width="300" height="250"/>
+					<mx:TitleWindow id="aboutWindow" height="250" visible="false" close="vstack.selectedIndex = 0;" showCloseButton="true" title="About the Podium Pod" 
+									backgroundColor="#1e1e1e" color="#FFFFFF" borderColor="#4e4e4e" borderThickness="3">
+						<mx:TextArea width="100%" height="100%" editable="false" selectable="false" htmlText="{aboutStr + copyrightFooterText}" backgroundAlpha="0.0" borderStyle="none" borderThickness="0" />
+					</mx:TitleWindow>
+					<mx:TitleWindow id="optionsWindow" height="250" visible="false" close="vstack.selectedIndex = 0;" showCloseButton="true" title="Options For Podium Pod" 
+									backgroundColor="#1e1e1e" color="#FFFFFF" borderColor="#4e4e4e" borderThickness="3">
+						<mx:VBox id="connectionBox" width="100%" height="100%" visible="{showConnectionOptions}" verticalAlign="middle" horizontalAlign="right">
+							<mx:Label text="PODIUM RTMP SERVER:" />
+							<mx:TextInput id="rtmpServerInput" width="200" text="{videoURL}" cornerRadius="0.8" borderStyle="solid" />
+							<mx:Label text="PODIUM RTMP STREAM:" />
+							<mx:TextInput id="rtmpStreamInput" width="200" text="{streamName}" cornerRadius="0.8" borderStyle="solid" />
+							<mx:Label text="BUFFER LENGTH:" />
+							<mx:NumericStepper id="bufferStepper" minimum="2" maximum="20" value="0" />
+							<mx:LinkButton id="connectButton" visible="{showConnectionOptions}" label="{CONNECT}" click="connectButton_clickHandler(event)" />
+						</mx:VBox> 
+					</mx:TitleWindow>
+					<mx:TitleWindow id="qualityWindow" height="250" visible="false" close="vstack.selectedIndex = 0;" showCloseButton="true" title="Quality For Podium Pod" 
+									backgroundColor="#1e1e1e" color="#FFFFFF" borderColor="#4e4e4e" borderThickness="3">
+						<mx:VBox id="qualityBox" width="100%" height="100%" verticalAlign="middle" horizontalAlign="right">
+							<mx:RadioButtonGroup id="qualitytype" itemClick="qualitytype_itemClickHandler(event)"/>
+							<mx:RadioButton groupName="qualitytype" 
+											id="highRB" selected="{quality == HIGH}"
+											value="{HIGH}" enabled="{streamColl.length > 0}"
+											label="Best Quality" 
+											width="150"/>
+							<mx:RadioButton groupName="qualitytype" 
+											id="mediumRB"  selected="{quality == MEDIUM}"
+											value="{MEDIUM}"  enabled="{streamColl.length > 1}"
+											label="Better Quality" 
+											width="150"/>
+							<mx:RadioButton groupName="qualitytype" 
+											id="lowRB"  selected="{quality == LOW}"
+											value="{LOW}"  enabled="{streamColl.length > 2}"
+											label="Good Quality" 
+											width="150"/>
+							<mx:RadioButton groupName="qualitytype" 
+											id="audioRB"  selected="{audioOnly}"
+											value="{AUDIO}" 
+											label="Audio Only" 
+											width="150"/>
+						</mx:VBox> 
+					</mx:TitleWindow>
+				</mx:ViewStack>
+				<mx:HBox id="controlBox" width="100%" paddingBottom="5" paddingTop="5" paddingLeft="10" paddingRight="10" backgroundColor="#1e1e1e" color="#FFFFFF" verticalAlign="middle" horizontalAlign="center">
+					<mx:Image source="{csLogo}" height="20" width="150" scaleContent="true" smoothBitmapContent="true" />
+					<!--<mx:Spacer width="100%" />
+					<mx:Text htmlText="{copyrightFooterText}" fontFamily="MyriadProForLameMXComponents" fontSize="8" alpha="0.6" paddingLeft="10" paddingRight="10" />-->
+					<mx:Spacer width="100%" />
+					<mx:HBox width="100%" horizontalAlign="right" verticalAlign="middle">
+						<mx:LinkButton id="optionsButton" icon="{settingsIcon}" labelPlacement="bottom" visible="{showConnectionOptions}" label="Options" click="optionsButton_clickHandler(event)" />
+						<mx:LinkButton id="qualityButton" icon="{qualityIcon}" labelPlacement="bottom" label="Quality" click="qualityButton_clickHandler(event)"  enabled="false" />
+						<mx:LinkButton id="muteButton" icon="{muteIcon}" labelPlacement="bottom" label="Mute" click="muteButton_clickHandler(event)" enabled="false" />
+						<mx:LinkButton id="aboutButton" icon="{aboutIcon}" labelPlacement="bottom" label="About" click="aboutButton_clickHandler(event)" />
+					</mx:HBox>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:VBox>
+		<mx:HBox id="watermarkBox" width="100%" height="{standByBox.height - 50}" verticalAlign="bottom" horizontalAlign="center" visible="false" paddingLeft="10" paddingBottom="10">
+			<mx:Image source="{watermark}" scaleContent="true" width="100" />
+		</mx:HBox>
+	</mx:Canvas>
+</mx:Application>

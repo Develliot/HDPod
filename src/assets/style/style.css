@@ -1,0 +1,128 @@
+/**
+ * 
+ * Copyright 2011 ConnectSolutions
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *  
+ */ 
+
+@font-face 
+{
+    src:url("/assets/fonts/MyriadWebPro.ttf");
+    fontFamily: MyriadPro;	
+	embedAsCFF: false;
+}
+
+Application
+{
+	padding-top: 0;
+	padding-right: 0;
+	padding-bottom: 0;
+	padding-left: 0;
+	color: #FFFFFF;
+	backgroundColor: #222222;
+	fontFamily: MyriadPro;
+}
+
+Button
+{
+	fontFamily: MyriadPro;
+	fontSize: 11;
+	fontWeight:bold;
+	backgroundColor: #4F5357;
+	padding-top: 4;
+	padding-right: 4;
+	padding-bottom: 4;
+	padding-left: 4;
+}
+
+LinkButton
+{
+	fontFamily: MyriadPro;
+	fontSize: 11;
+	fontWeight:bold;
+	backgroundColor: #4F5357;
+	padding-top: 4;
+	padding-right: 4;
+	padding-bottom: 4;
+	padding-left: 4;
+}
+
+Text 
+{
+	font-family: MyriadPro;
+}
+
+VScrollBar {
+	chrome-color: #444444;
+}
+
+Alert 
+{
+	font-family: MyriadPro;
+	background-color: #1e1e1e;
+	color: #efefef;
+	title-style-name: alertTitle;
+	header-height: 0;
+}
+
+TitleWindow
+{
+	header-style-name: titleHeader;
+}
+
+.titleHeader
+{
+	background-color: #1e1e1e;
+	font-weight: bold;
+	color: #000000;
+	drop-shadow-visible: true;
+}
+
+TextArea 
+{
+	font-family: MyriadPro;
+	color: #EFEFEF;
+}
+
+Label
+{
+	fontFamily: MyriadPro;
+}
+
+VScrollBar
+{
+	
+}
+
+HScrollBar
+{
+    
+}
+
+TextInput
+{
+	color:#333333;
+}
+
+.videoState
+{
+	backgroundColor: #000000;
+    backgroundAlpha: 0.85;
+}
+
+.videoStateHeadline
+{
+	color: #FFFFFF;
+	fontSize: 18px;	
+}
