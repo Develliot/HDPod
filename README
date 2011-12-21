@@ -18,4 +18,4 @@
 
 The HDPod For Adobe Connect 8 requires the SyncConnector.swc, ConnectionEmulator.swc, and ServicesEmulator.swc available from Adobe at http://www.adobe.com/devnet/adobeconnect.html.
 
-This project is built with FlashBuilder 4.x.  In order to build, import the source into Adobe Flash Builder and compile after importing the dependent SWC libraries listed above. 
+This project is built with FlashBuilder 4.x, but requires the 3.x SDK to be selected when building.  In order to build, import the source into Adobe Flash Builder and compile after importing the dependent SWC libraries listed above. 
